@@ -403,7 +403,9 @@ MIT License
           4、Map代表具有映射关系（key-value）的集合
         这些接口拥有众多实现类，最常用的又HashSet、TreeSet、ArrayList、LinkedList、ArrayDeque、HashMap、TreeMap等。
       二、Java集合中线程安全和线程不安全的分别有哪些
-        java.util包下大部分集合都是
+        java.util包下大部分集合都是线程不安全的，例如我们常用的HashSet、TreeSet、ArrayList、LinkedList、ArrayDeque、HashMap、TreeMap，这些都是线程不安全的集合类，但是他们的优点是性能好。如果需要使用线程安全的集合类，可以使用Collections工具类提供的synchronizedXxx方法，将这些集合类包装成线程安全的集合类。java.util包下也有线程安全的的集合类，Vector、HashTable。这些集合都是古老的API，虽然都实现了线程安全，但是性能很差。所以即便是要使用线程安全的集合类，也建议将线程不安全的集合类包装成线程安全的集合类的方式，而不是使用这些古老的API。从Java5开始Java在java.util.concurrent包下提供了大量支持高并发访问的集合类，它们既有良好的访问性能，又是线程安全的。这些集合分为以下两种：
+          1、以Concurrent开头的集合类代表了支持并发访问的集合，它们可以支持多个线程并发写入访问，这些写入线程的所有操作都是线程安全的，但读取操作不必锁定。以Concurrent开头的集合类采用了更复杂的算法来保证永远不会锁定整个集合，因此在并发写入时有较好的性能。
+          2、以CopyOnWrite开头的集合类采用复制底层数组的方式来实现写操作。当线程对此类集合执行读操作时，线程将会直接读取集合本身，无需加锁与阻塞。当线程对此类集合执行写入操作时，集合会在底层复制一份新的数组，接下来对新数组执行写入操作。由于对集合的写入操作都是对数组的副本执行操作，因此它是线程安全的。
 
 
     1.3、IO

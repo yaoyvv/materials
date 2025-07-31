@@ -402,13 +402,144 @@ MIT License
           3、Queue代表先进先出的队列
           4、Map代表具有映射关系（key-value）的集合
         这些接口拥有众多实现类，最常用的又HashSet、TreeSet、ArrayList、LinkedList、ArrayDeque、HashMap、TreeMap等。
+
       二、Java集合中线程安全和线程不安全的分别有哪些
         java.util包下大部分集合都是线程不安全的，例如我们常用的HashSet、TreeSet、ArrayList、LinkedList、ArrayDeque、HashMap、TreeMap，这些都是线程不安全的集合类，但是他们的优点是性能好。如果需要使用线程安全的集合类，可以使用Collections工具类提供的synchronizedXxx方法，将这些集合类包装成线程安全的集合类。java.util包下也有线程安全的的集合类，Vector、HashTable。这些集合都是古老的API，虽然都实现了线程安全，但是性能很差。所以即便是要使用线程安全的集合类，也建议将线程不安全的集合类包装成线程安全的集合类的方式，而不是使用这些古老的API。从Java5开始Java在java.util.concurrent包下提供了大量支持高并发访问的集合类，它们既有良好的访问性能，又是线程安全的。这些集合分为以下两种：
           1、以Concurrent开头的集合类代表了支持并发访问的集合，它们可以支持多个线程并发写入访问，这些写入线程的所有操作都是线程安全的，但读取操作不必锁定。以Concurrent开头的集合类采用了更复杂的算法来保证永远不会锁定整个集合，因此在并发写入时有较好的性能。
           2、以CopyOnWrite开头的集合类采用复制底层数组的方式来实现写操作。当线程对此类集合执行读操作时，线程将会直接读取集合本身，无需加锁与阻塞。当线程对此类集合执行写入操作时，集合会在底层复制一份新的数组，接下来对新数组执行写入操作。由于对集合的写入操作都是对数组的副本执行操作，因此它是线程安全的。
 
+      三、Map接口有哪些实现类？
+        Map接口有很多实现类，其中比较常用的有HashMap、LinkedHashMap、TreeMap、ConcurrentHashMap。对不需要排序的场景，优先考虑使用HashMap，因为它是性能最好的Map实现。如果需要保证线程安全，则可以考虑使用,它的性能好于Hashtable，因为它在put时采用分段锁/CAS的加锁机制，而不是像Hashtable那样无论put还是get都做同步处理。对于需要排序的场景，如果需要按插入顺序排序可以用LinkedHashMap，如果需要将key按自然顺序排列甚至是自定义顺序排列，则可以选择TreeMap，如果需要线程安全，则可以使用Collections工具类将上述实现类包装成线程安全的Map。
+
+      四、描述一下HashMap的put()过程
+        HashMap的put操作是将键值对存储到哈希表中的过程，以下是详细步骤：
+          1、 计算键的哈希值。如果key为null，哈希值为0（因此HashMap允许一个null键），否则调用key的hashCode()方法并通过扰动函数计算最终哈希值
+          2、 计算数组索引位置。使用哈希值与数组长度减1进行与运算得到索引位置
+          3、 处理该位置上的元素。如果该位置为空直接创建新节点并放入该位置如果该位置不为空（哈希冲突）,则检查第一个节点，如果第一个节点的key与要插入的key相同（hash相同且equals为true），则直接覆盖value。否则检查是否是树节点，如果是红黑树节点，调用红黑树的插入方法。否则遍历链表，遍历链表查找是否有相同key的节点如果找到则覆盖value如果没找到则在链表尾部插入新节点插入后检查链表长度是否超过树化阈值(默认8)，若超过则转为红黑树
+          4、 检查扩容。插入成功后检查当前元素数量是否超过阈值(容量*负载因子)如果超过则进行扩容（通常扩容为原大小的2倍）
+          5、 扩容过程创建新的数组（大小为原数组2倍）重新计算所有元素的位置（由于数组大小改变，元素位置可能变化）将旧数组中的元素转移到新数组。对于链表，可能拆分为两个链表（高位链表和低位链表）。对于红黑树，可能退化为链表或拆分关键点。
+      
+      五、HashMap是如何解决哈希冲突的
+        为了解决碰撞，数组中的元素是单向链表类型。当链表长度到达一个阈值时，会将链表转换成红黑树提高性能。而当链表长度缩小到另一个阈值时，又会将红黑树转换回单向链表提高性能。
+
+      六、HashMap和ConcurrentHashMap有什么区别
+        HashMap是非线程安全的，这意味着不应该在多线程中对这些Map进行修改操作，否则会产生数据不一致的问题，甚至还会因为并发插入元素而导致链表成环，这样在查找时就会发生死循环，影响到整个应用程序。Collections工具类可以将一个Map转换成线程安全的实现，其实也就是通过一个包装类，然后把所有功能都委托给传入的Map，而包装类是基于synchronized关键字来保证线程安全的（Hashtable也是基于synchronized关键字），底层使用的是互斥锁，性能与吞吐量比较低。ConcurrentHashMap的实现细节远没有这么简单，因此性能也要高上许多。它没有使用一个全局锁来锁住自己，而是采用了减少锁粒度的方法，尽量减少因为竞争锁而导致的阻塞与冲突，而且ConcurrentHashMap的检索操作是不需要锁的。
+
+      七、请介绍TreeMap的底层原理
+        reeMap基于红黑树（Red-Black tree）实现。映射根据其键的自然顺序进行排序，或者根据创建映射时提供的 Comparator 进行排序，具体取决于使用的构造方法。TreeMap的基本操作containsKey、get、put、remove方法，它的时间复杂度是log(N)。TreeMap包含几个重要的成员变量：root、sizecomparator。其中root是红黑树的根节点，它是Entry类型，Entry是红黑树的节点，它包含了红黑树的6个基本组成：key、value、left、right、parent和color。Entry节点根据根/key排序，包含的内容是value。Entry中key比较大小是根据比较器comparator来进行判断的。size是红黑树的节点个数。
+
+      八、Map和Set有什么区别？
+        Set代表无序的，元素不可重复的集合。Map代表具有映射关系（key-value）的集合，其所有的key是一个Set集合，即key无序且不能重复。
+        
+      九、List和Set有什么区别？
+        Set代表无序的，元素不可重复的集合。List代表有序的，元素可以重复的集合。
+
+      十、ArrayList和LinkedList有什么区别？
+        1. ArrayList的实现是基于数组，LinkedList的实现是基于双向链表。
+        2. 对于随机访问ArrayList或IntelList，ArrayList可以根据下标以O(1)时间复杂度对元素进行随机访问，而LinkedList的每一个元素都依赖地址指针和它后一个元素连接在一起，查找某个元素的时间复杂度是O(N)。
+        3. 对于插入和删除操作，LinkedList要优于ArrayList，因为当元素被添加到LinkedList位置的时候，不需要像ArrayList那样重新计算大小或者是更新索引。
+        4. LinkedList比ArrayList更占内存，因为LinkedList的节点除了存储数据，还有储了两个引用，一个指向前一个元素，一个指向后一个元素。
+
+      十一、有哪些线程安全的List？
+        1、Vector是比较古老的API，虽然保证了线程安全，但是由于效率低一般不建议使用。
+        2. SynchronizedList是Collections的内嵌类，Collections提供了SynchronizedList方法，可以将一个线程不安全的List包装成线程安全的List，即SynchronizedList。它比Vector有更好的扩展性和兼容性，但是它所有的方法都带有同步锁，也不是性能最优的List。
+        3.CopyOnWriteArrayList是Java 1.5在java.util.concurrent包下增加的类，它采用复制底层数组的方式来实现写操作。当线程对此类集合执行读取操作时，线程将会直接读取集合本身，无法加载与阻塞。当线程对此类集合执行写入操作时，集合会在底层复制一份新的数组，接下来对新的数组执行写入操作。由于对集合的写入操作都是对数组的副本执行操作，因此它是线程安全的。在所有线程安全的List中，它是性能最优的方案。
+
+      十二、介绍一下ArrayList的数据结构
+        ArrayList的底层是用数组来实现的，默认第一次插入元素时的大小为10的数组，超出限制时会增加50%的容量，并且数据以System.arraycopy()复制到新的数组，因此最好能给出数组大小的预估值。
+        按数组下标访问元素的性能很高，这是数组的基本优势。直接在数组末尾加入元素的性能也高，但如果按下标插入、删除元素，则要用System.arraycopy()来移动部分受影响的元素，性能就变差了，这是基本劣势。
+        
+      十三、谈谈CopyOnWriteArrayList的原理
+        CopyOnWriteArrayList是Java并发包里提供的并发类，简单来说它就是一个线程安全且读操作无锁的ArrayList。正如其名字一样，在写操作时会复制一份新的List，在新的List上完成写操作，然后再将原容器的引用指向新List，这样就保证了写操作的线程安全。CopyOnWriteArrayList允许线程并发访问读操作，这个时候是没有加锁限制的，性能较高，而写操作的时候，则首先将容器复制一份，然后在新的副本上执行写操作，这个时候写操作是上锁的，结束之后再将原容器的引用指向新容器。注意，在上锁执行写操作的过程中，如果需要读操作，会作用在原容器上。因此上锁的写操作不会影响到并发访问的读操作。
+        
+        优点：读操作性能很高，因为无需任何同步措施，比较适用于读多写少的并发场景。在遍历传统的List时，若中途有别的线程对其进行修改，则会抛出ConcurrentModificationException异常，而CopyOnWriteArrayList由于读写分离，遍历和修改操作分别作用在不同的List容器，所以在使用迭代器遍历时不会抛出此异常。
+        
+        缺点：一是内存占用问题，毕竟每次执行写操作都要将原容器拷贝一份，数据量大时对内存压力较大，可能会引起频繁GC；二是无法保证实时性，Vector对于读写操作均加锁同步，可以保证读取到最新数据，CopyOnWriteArrayList由于读写分别作用在新老不同容器上，写操作过程中读到的仍是老数据。
+      
+      十四、说一说TreeSet和HashSet的区别
+        HashSet、TreeSet中的元素都是不能重复的，并且它们都是线程不安全的，二者的区别是
+        1. HashSet中的元素可以是null，但TreeSet中的元素不能是null。
+        2. HashSet不能保证元素的排列顺序，而TreeSet支持自然排序和定制排序两种排序方式。
+        3. HashSet底层是用哈希表实现的，而TreeSet底层是采用红黑树实现的。
+      
+      十五、说一说HashSet的底层结构
+        HashSet是基于HashMap实现的，默认构造函数是构建一个初始容量为16、负载因子为0.75的HashMap。它封装了一个HashMap对象来存储所有的集合元素，所有放入HashSet中的集合元素实际上由HashMap的key来保存，而HashMap的value则存储了一个PRESENT，它是一个静态的Object对象。
 
     1.3、IO
+    3.1 介绍一下Java中的IO流
+参考答案
+IO（Input Output）用于实现对数据的输入与输出操作，Java把不同的输入/输出源（键盘、文件、网络等）抽象表述为流（Stream）。流是从起源到接收的有序数据，有了它程序就可以采用同一方式访问不同的输入/输出源。
+
+按数据流向：分为输入流（只能读取数据）和输出流（只能写入数据）。
+
+按数据类型：分为字节流（操作8位字节）和字符流（操作16位字符）。
+
+按处理功能：分为节点流（直接操作IO设备）和处理流（封装节点流，提供高级功能）。
+
+常用类：
+
+文件流：FileInputStream、FileOutputStream
+
+缓冲流：BufferedInputStream、BufferedWriter
+
+转换流：InputStreamReader、OutputStreamWriter
+
+对象流：ObjectInputStream、ObjectOutputStream
+
+3.2 怎么用流打开一个大文件？
+参考答案
+
+缓冲流：通过缓冲区减少IO次数，如BufferedReader。
+
+NIO：使用内存映射文件（FileChannel + MappedByteBuffer），直接操作内存，性能更高。
+
+3.3 说说NIO的实现原理
+参考答案
+NIO核心组件：
+
+Channel：数据传输通道（如FileChannel、SocketChannel）。
+
+Buffer：内存块，存储数据（如ByteBuffer）。
+
+属性：capacity（容量）、position（当前位置）、limit（读写限制）。
+
+Selector：单线程监听多个Channel事件（如读写就绪）。
+
+优势：非阻塞IO，适合高并发场景。
+
+3.4 介绍一下Java的序列化与反序列化
+参考答案
+
+序列化：将对象转为字节序列（ObjectOutputStream.writeObject()）。
+
+反序列化：将字节序列恢复为对象（ObjectInputStream.readObject()）。
+
+要求：类需实现Serializable接口（标记接口）。
+
+3.5 Serializable接口为什么需要定义serialVersionUID变量？
+参考答案
+
+作用：标识类的版本，确保序列化与反序列化时版本一致。
+
+未定义的风险：类结构变更（如增删字段）可能导致反序列化失败。
+
+3.6 除了Java自带的序列化之外，你还了解哪些序列化工具？
+参考答案
+
+JSON：易读性强（如Jackson、Gson）。
+
+Protobuf：二进制格式，高效紧凑，跨语言支持。
+
+Thrift：集成RPC框架，高性能。
+
+Avro：支持动态Schema，适合大数据场景。
+
+3.7 如果不用JSON工具，该如何实现对实体类的序列化？
+参考答案
+
+Java原生序列化：简单但性能低。
+
+第三方工具：如Protobuf（需预定义Schema）、Thrift（集成RPC）。
 
 
     1.4、多线程
